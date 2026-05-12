@@ -23,8 +23,7 @@ async function startServer() {
       const key_secret = process.env.RAZORPAY_KEY_SECRET;
       
       if (!key_id || !key_secret) {
-        console.warn("[RAZORPAY] Missing credentials. Payments will fail.");
-        return null;
+        throw new Error("RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is missing. Please set them in the Settings menu.");
       }
       
       razorpay = new Razorpay({
@@ -48,9 +47,6 @@ async function startServer() {
       }
 
       const client = getRazorpay();
-      if (!client) {
-        return res.status(500).json({ error: "Payment gateway not configured" });
-      }
 
       const options = {
         amount: Math.round(amount * 100),
@@ -102,10 +98,15 @@ async function startServer() {
   app.post("/api/verify-payment", async (req, res) => {
     try {
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+      const secret = process.env.RAZORPAY_KEY_SECRET;
+
+      if (!secret) {
+        throw new Error("RAZORPAY_KEY_SECRET is missing.");
+      }
       
       const body = razorpay_order_id + "|" + razorpay_payment_id;
       const expectedSignature = crypto
-        .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET || "dummy")
+        .createHmac("sha256", secret)
         .update(body.toString())
         .digest("hex");
 
