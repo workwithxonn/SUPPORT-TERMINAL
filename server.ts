@@ -2,9 +2,13 @@ import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
-import Razorpay from "razorpay";
 import crypto from "crypto";
 import dotenv from "dotenv";
+
+// Import API handlers
+import createOrderHandler from "./api/create-order.ts";
+import verifyPaymentHandler from "./api/verify-payment.ts";
+import webhookHandler from "./api/webhook.ts";
 
 dotenv.config();
 
@@ -15,128 +19,27 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  // Razorpay Initialization (LAZY)
-  let razorpay: any = null;
-  const getRazorpay = () => {
-    if (!razorpay) {
-      const key_id = process.env.RAZORPAY_KEY_ID;
-      const key_secret = process.env.RAZORPAY_KEY_SECRET;
-      
-      if (!key_id || !key_secret) {
-        throw new Error("RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is missing. Please set them in the Settings menu.");
-      }
-      
-      razorpay = new Razorpay({
-        key_id,
-        key_secret,
-      });
-    }
-    return razorpay;
-  };
-
   app.use(express.json());
 
-  // --- API Routes ---
-
-  // Create Razorpay Order
+  // --- API Routes (Imported Handlers) ---
   app.post("/api/create-order", async (req, res) => {
-    try {
-      const { amount, currency = "INR", name, email } = req.body;
-      
-      if (!amount || isNaN(Number(amount)) || Number(amount) < 20) {
-        return res.status(400).json({ 
-          success: false, 
-          error: "Minimum donation is ₹20" 
-        });
-      }
-
-      const client = getRazorpay();
-
-      const options = {
-        amount: Math.round(Number(amount) * 100),
-        currency,
-        receipt: `receipt_${Date.now()}`,
-        notes: {
-          donor_name: name || "Anonymous",
-          donor_email: email || "no-email@provided.com"
-        }
-      };
-
-      console.log("[SERVER] Creating Razorpay Order:", options);
-      const order = await client.orders.create(options);
-      res.json({ ...order, success: true });
-    } catch (error: any) {
-      console.error("Razorpay Order Error:", error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message || "Failed to create order",
-        message: "Check server logs for details"
-      });
-    }
+    console.log("[SERVER] POST /api/create-order");
+    await createOrderHandler(req, res);
   });
-
-  // Razorpay Webhook (Production verification)
-  // Support both /api/webhook and /api/razorpay/webhook
-  const handleWebhook = async (req: express.Request, res: express.Response) => {
-    try {
-      const secret = process.env.RAZORPAY_WEBHOOK_SECRET || "xonn_webh1ook_secure_2026";
-      const signature = req.headers["x-razorpay-signature"] as string;
-      
-      if (!signature) {
-        return res.status(400).json({ success: false, error: "Missing signature" });
-      }
-
-      const expectedSignature = crypto
-        .createHmac("sha256", secret)
-        .update(JSON.stringify(req.body))
-        .digest("hex");
-
-      if (expectedSignature === signature) {
-        const event = req.body.event;
-        console.log("[WEBHOOK] Received Event:", event);
-        
-        if (event === "payment.captured") {
-           console.log("[WEBHOOK] Payment Captured:", req.body.payload.payment.entity.id);
-        }
-        res.status(200).json({ success: true, status: "ok" });
-      } else {
-        console.warn("[WEBHOOK] Signature Mismatch");
-        res.status(400).json({ success: false, error: "Invalid signature" });
-      }
-    } catch (err: any) {
-      console.error("[WEBHOOK] Error:", err);
-      res.status(500).json({ success: false, error: "Internal webhook error" });
-    }
-  };
-
-  app.post("/api/webhook", handleWebhook);
-  app.post("/api/razorpay/webhook", handleWebhook);
-
-  // Verify Razorpay Payment Signature
+  
   app.post("/api/verify-payment", async (req, res) => {
-    try {
-      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-      const secret = process.env.RAZORPAY_KEY_SECRET;
-
-      if (!secret) {
-        return res.status(500).json({ success: false, error: "RAZORPAY_KEY_SECRET not configured on server" });
-      }
-      
-      const body = razorpay_order_id + "|" + razorpay_payment_id;
-      const expectedSignature = crypto
-        .createHmac("sha256", secret)
-        .update(body.toString())
-        .digest("hex");
-
-      if (expectedSignature === razorpay_signature) {
-        res.json({ success: true, verified: true });
-      } else {
-        res.status(400).json({ success: false, verified: false, error: "Invalid signature" });
-      }
-    } catch (error: any) {
-      console.error("Verification Error:", error);
-      res.status(500).json({ success: false, error: "Verification process failed" });
-    }
+    console.log("[SERVER] POST /api/verify-payment");
+    await verifyPaymentHandler(req, res);
+  });
+  
+  app.post("/api/webhook", async (req, res) => {
+    console.log("[SERVER] POST /api/webhook");
+    await webhookHandler(req, res);
+  });
+  
+  app.post("/api/razorpay/webhook", async (req, res) => {
+    console.log("[SERVER] POST /api/razorpay/webhook");
+    await webhookHandler(req, res);
   });
 
   // Health Check
