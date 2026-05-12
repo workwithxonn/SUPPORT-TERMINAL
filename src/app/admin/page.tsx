@@ -1,10 +1,9 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
-  BarChart3, Users, MessageSquare, Shield, 
-  Settings, Trash2, Pin, Volume2, Ban, 
-  Download, Activity, ArrowLeft, LogOut,
-  TrendingUp, IndianRupee, Bell
+  Shield, LogOut, Settings, IndianRupee, Activity, Users, Download, TrendingUp, Pin, Trash2, Volume2, Bell, Ban
 } from "lucide-react";
 import { auth, db } from "@/src/lib/firebase";
 import { 
@@ -19,20 +18,20 @@ import {
   orderBy, 
   onSnapshot, 
   deleteDoc, 
-  doc, 
-  updateDoc 
+  doc 
 } from "firebase/firestore";
-import { Link, useNavigate } from "react-router-dom";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatCurrency, cn } from "@/src/lib/utils";
 
 const ADMIN_EMAIL = "arao26704@gmail.com";
 
-export default function Admin() {
+export default function AdminPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [donations, setDonations] = useState<any[]>([]);
   const [copyStatus, setCopyStatus] = useState("Copy Public Link");
-  const navigate = useNavigate();
+  const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -48,9 +47,10 @@ export default function Admin() {
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [router]);
 
   const copyLink = () => {
+    if (typeof window === "undefined") return;
     const link = `${window.location.origin}/`;
     navigator.clipboard.writeText(link);
     setCopyStatus("LINK COPIED");
@@ -114,7 +114,7 @@ export default function Admin() {
           >
             Authorize Operator
           </button>
-          <Link to="/" className="inline-block mt-8 text-[10px] text-hud-green/40 hover:text-hud-yellow uppercase tracking-[0.4em] transition-colors">
+          <Link href="/" className="inline-block mt-8 text-[10px] text-hud-green/40 hover:text-hud-yellow uppercase tracking-[0.4em] transition-colors">
             Return to Public Feed
           </Link>
         </motion.div>
@@ -135,7 +135,7 @@ export default function Admin() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <Link to="/" className="px-4 py-2 text-[10px] uppercase font-bold text-hud-green/60 hover:text-white transition-colors">Public View</Link>
+          <Link href="/" className="px-4 py-2 text-[10px] uppercase font-bold text-hud-green/60 hover:text-white transition-colors">Public View</Link>
           <button onClick={handleLogout} className="p-2 border border-hud-border text-hud-green/40 hover:text-hud-yellow transition-colors">
             <LogOut className="w-5 h-5" />
           </button>
@@ -226,7 +226,7 @@ export default function Admin() {
                   <div className="flex gap-2">
                     <input 
                       readOnly 
-                      value={`${window.location.origin}/`}
+                      value={typeof window !== "undefined" ? `${window.location.origin}/` : ""}
                       className="bg-hud-bg border border-hud-border p-3 text-[10px] font-mono text-hud-green flex-1 focus:outline-none"
                     />
                     <button 

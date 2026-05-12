@@ -1,8 +1,10 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { db } from "@/src/lib/firebase";
 import { collection, query, where, orderBy, onSnapshot, limit } from "firebase/firestore";
 import { motion, AnimatePresence } from "motion/react";
-import { Zap, Star, Trophy, MessageSquare } from "lucide-react";
+import { Zap } from "lucide-react";
 import { cn, formatCurrency } from "@/src/lib/utils";
 import confetti from "canvas-confetti";
 
@@ -14,7 +16,7 @@ interface Donation {
   timestamp: any;
 }
 
-export default function Overlay() {
+export default function OverlayPage() {
   const [activeAlert, setActiveAlert] = useState<Donation | null>(null);
   const [latestDonation, setLatestDonation] = useState<Donation | null>(null);
 
@@ -52,10 +54,10 @@ export default function Overlay() {
       });
     }
 
-    if (window.speechSynthesis) {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
       const utterance = new SpeechSynthesisUtterance(`${donation.name} says: ${donation.message}`);
       utterance.rate = 1.0;
-      utterance.pitch = 0.8; // Robotic futuristic feel
+      utterance.pitch = 0.8; 
       window.speechSynthesis.speak(utterance);
     }
 
@@ -63,7 +65,7 @@ export default function Overlay() {
   };
 
   return (
-    <div className="w-[1920px] h-[1080px] bg-transparent overflow-hidden font-sans text-hud-green p-20 select-none border-[12px] border-transparent">
+    <div className="w-full h-screen bg-transparent overflow-hidden font-sans text-hud-green p-20 select-none border-[12px] border-transparent flex items-center justify-center relative">
       {/* Alert Center */}
       <div className="absolute top-20 left-1/2 -translate-x-1/2">
         <AnimatePresence>

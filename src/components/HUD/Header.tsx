@@ -1,7 +1,9 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { Zap, Layout, Radio, User } from "lucide-react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { auth } from "@/src/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -51,7 +53,7 @@ export default function Header() {
           </div>
           
           {isAdmin && (
-            <Link to="/admin" className="flex items-center gap-3 px-6 py-2 bg-hud-yellow/10 border border-hud-yellow/30 text-hud-yellow text-xs font-bold uppercase tracking-widest hover:bg-hud-yellow hover:text-black transition-all">
+            <Link href="/admin" className="flex items-center gap-3 px-6 py-2 bg-hud-yellow/10 border border-hud-yellow/30 text-hud-yellow text-xs font-bold uppercase tracking-widest hover:bg-hud-yellow hover:text-black transition-all">
               <User className="w-4 h-4" />
               Admin Access
             </Link>

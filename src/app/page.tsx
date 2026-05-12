@@ -1,11 +1,12 @@
+"use client";
+
 import React from "react";
 import { motion } from "motion/react";
-import Header from "@/src/components/HUD/Header.tsx";
-import DonationForm from "@/src/components/DonationForm.tsx";
-import LiveFeed from "@/src/components/LiveFeed.tsx";
-import Leaderboard from "@/src/components/Leaderboard.tsx";
-import { Radar, Hexagon, Code, Settings, Share2, Info, Activity, Radio } from "lucide-react";
-import { cn } from "@/src/lib/utils";
+import Header from "@/src/components/HUD/Header";
+import DonationForm from "@/src/components/DonationForm";
+import LiveFeed from "@/src/components/LiveFeed";
+import Leaderboard from "@/src/components/Leaderboard";
+import { Zap } from "lucide-react";
 
 export default function Home() {
   return (
