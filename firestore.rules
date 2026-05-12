@@ -36,9 +36,8 @@ service cloud.firestore {
       allow list: if existing().verified == true;
       allow get: if true;
 
-      // Anyone can create a PENDING donation
+      // Anyone can create a donation
       allow create: if isValidDonation(incoming()) 
-        && incoming().verified == false 
         && (!isSignedIn() || incoming().email == (request.auth.token.email || ''));
 
       // Only admins or the Server (via Admin SDK) can update/delete

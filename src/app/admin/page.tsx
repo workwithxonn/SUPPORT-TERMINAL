@@ -24,7 +24,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatCurrency, cn } from "@/src/lib/utils";
 
-const ADMIN_EMAIL = "itsyadavaman05@gmail.com";
+const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "itsyadavaman05@gmail.com";
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null);
