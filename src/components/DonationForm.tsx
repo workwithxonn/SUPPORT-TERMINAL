@@ -56,8 +56,17 @@ export default function DonationForm({ onSuccess }: Props) {
         }),
       });
       
+      const contentType = orderRes.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await orderRes.text();
+        console.error("Non-JSON response received:", text);
+        throw new Error("Terminal link failed: Server returned non-JSON response. Check console.");
+      }
+
       const order = await orderRes.json();
-      if (!orderRes.ok) throw new Error(order.error || "Failed to initiate payment");
+      if (!orderRes.ok || !order.success) {
+        throw new Error(order.error || order.message || "Failed to initiate payment");
+      }
 
       // 2. Show QR Modal
       setPaymentData({
@@ -66,7 +75,8 @@ export default function DonationForm({ onSuccess }: Props) {
       });
       
     } catch (err: any) {
-      setError(err.message);
+      console.error("Donation Error:", err);
+      setError(err.message || "Unknown error encountered during transmission");
     } finally {
       setLoading(false);
     }
