@@ -1,15 +1,21 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { CreditCard, AlertTriangle, CheckCircle2, Loader2, Zap } from "lucide-react";
 import { db } from "@/src/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { cn } from "@/src/lib/utils";
-import QRCodeModal from "./QRCodeModal";
 
 interface Props {
   onSuccess: (donation: any) => void;
+}
+
+// Declare Razorpay on window for TS
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
 }
 
 export default function DonationForm({ onSuccess }: Props) {
@@ -22,7 +28,20 @@ export default function DonationForm({ onSuccess }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [charLimit, setCharLimit] = useState(20);
-  const [paymentData, setPaymentData] = useState<{ orderId: string, paymentLink: string } | null>(null);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
+
+  // Load Razorpay Script
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => setScriptLoaded(true);
+    script.onerror = () => setError("Failed to load payment gateway. Check your connection.");
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
 
   useEffect(() => {
     const amount = formData.amount;
@@ -37,7 +56,8 @@ export default function DonationForm({ onSuccess }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isOverLimit) return;
+    if (isOverLimit || !scriptLoaded) return;
+    
     if (formData.amount < 20) {
       setError("Minimum donation is ₹20");
       return;
@@ -58,45 +78,76 @@ export default function DonationForm({ onSuccess }: Props) {
         }),
       });
       
-      const contentType = orderRes.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await orderRes.text();
-        console.error("Non-JSON response received:", text);
-        throw new Error("Terminal link failed: Server returned non-JSON response. Check console.");
-      }
-
       const order = await orderRes.json();
+      
       if (!orderRes.ok || !order.success) {
         throw new Error(order.error || order.message || "Failed to initiate payment");
       }
 
-      // 2. Show QR Modal
-      setPaymentData({
-        orderId: order.id,
-        paymentLink: order.short_url || `https://checkout.razorpay.com/v1/checkout.js?order_id=${order.id}`
-      });
+      // 2. Initialize Razorpay Checkout
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "", // Will be provided by platform
+        amount: order.amount,
+        currency: order.currency,
+        name: "XONN-SECURE UPLINK",
+        description: "Tactical Support Donation",
+        order_id: order.id,
+        handler: async (response: any) => {
+          // 3. Verify Payment
+          try {
+            const verifyRes = await fetch("/api/verify-payment", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }),
+            });
+
+            const verifyData = await verifyRes.json();
+            if (verifyData.success) {
+              // 4. Save to Firestore
+              const donationData = {
+                ...formData,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                verified: true,
+                timestamp: serverTimestamp(),
+                status: 'success'
+              };
+              
+              await addDoc(collection(db, "donations"), donationData);
+              onSuccess(donationData);
+              setFormData({ name: "", email: "", amount: 20, message: "" });
+              alert("TRANSMISSION SUCCESSFUL: Support units deployed.");
+            } else {
+              throw new Error("Payment verification failed.");
+            }
+          } catch (vErr: any) {
+            setError(vErr.message || "Critical verification failure.");
+          }
+        },
+        prefill: {
+          name: formData.name,
+          email: formData.email,
+        },
+        theme: {
+          color: "#ff9d00",
+        },
+        modal: {
+          ondismiss: () => setLoading(false)
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
       
     } catch (err: any) {
       console.error("Donation Error:", err);
       setError(err.message || "Unknown error encountered during transmission");
-    } finally {
       setLoading(false);
     }
-  };
-
-  const handlePaymentSuccess = async () => {
-    const donationData = {
-      ...formData,
-      razorpayOrderId: paymentData?.orderId,
-      verified: true,
-      timestamp: serverTimestamp(),
-      status: 'success'
-    };
-    
-    await addDoc(collection(db, "donations"), donationData);
-    onSuccess(donationData);
-    setFormData({ name: "", email: "", amount: 20, message: "" });
-    setPaymentData(null);
   };
 
   return (
@@ -227,18 +278,6 @@ export default function DonationForm({ onSuccess }: Props) {
           )}
         </AnimatePresence>
       </form>
-
-      <AnimatePresence>
-        {paymentData && (
-          <QRCodeModal
-            amount={formData.amount}
-            orderId={paymentData.orderId}
-            paymentLink={paymentData.paymentLink}
-            onClose={() => setPaymentData(null)}
-            onSuccess={handlePaymentSuccess}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 }
