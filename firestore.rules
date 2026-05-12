@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { 
+      // Simplified: Check if user is in an 'admins' collection
+      // For this app, we'll use a specific UID or email if provided, 
+      // but let's assume existence in /admins/{uid}
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); 
+    }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+
+    // --- Donation Validation ---
+    function isValidDonation(data) {
+      return data.keys().hasAll(['name', 'email', 'amount', 'message', 'timestamp', 'verified'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 64
+        && data.email is string && data.email.size() <= 128
+        && data.amount is number && data.amount >= 20
+        && data.message is string && data.message.size() <= 1000
+        && data.verified is bool
+        && data.timestamp == request.time;
+    }
+
+    // --- Rules ---
+
+    match /donations/{donationId} {
+      // Anyone can see verified donations
+      allow list: if existing().verified == true;
+      allow get: if true;
+
+      // Anyone can create a PENDING donation
+      allow create: if isValidDonation(incoming()) 
+        && incoming().verified == false 
+        && (!isSignedIn() || incoming().email == (request.auth.token.email || ''));
+
+      // Only admins or the Server (via Admin SDK) can update/delete
+      // Note: Since this app uses a custom server, the server will use Admin SDK to verify.
+      // Admin SDK bypasses these rules.
+      allow update, delete: if isAdmin();
+    }
+
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /admins/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow write: if false; // Managed via console or admin tool
+    }
+  }
+}

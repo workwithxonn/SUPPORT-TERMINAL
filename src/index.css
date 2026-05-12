@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme {
+  --color-hud-green: #97b597;
+  --color-hud-green-bright: #00ff41;
+  --color-hud-green-dark: #0d120d;
+  --color-hud-yellow: #ff9d00;
+  --color-hud-yellow-bright: #ffea00;
+  --color-hud-bg: #090c09;
+  --color-hud-panel: #121812;
+  --color-hud-border: rgba(151, 181, 151, 0.15);
+  
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+}
+
+body {
+  background-color: var(--color-hud-bg);
+  color: var(--color-hud-green);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+.hud-card {
+  background: var(--color-hud-panel);
+  border: 1px solid var(--color-hud-border);
+  position: relative;
+}
+
+.hud-title-gradient {
+  background: linear-gradient(to bottom, #ffffff 0%, #999999 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.nav-item-active {
+  background: rgba(0, 255, 65, 0.1);
+  border-right: 4px solid var(--color-hud-yellow);
+  color: #fff;
+}
+
+.tactical-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-hud-green);
+  opacity: 0.6;
+}
+
+.glow-yellow {
+  box-shadow: 0 0 12px rgba(255, 157, 0, 0.2);
+}
+
+.grid-bg {
+  background-image: 
+    linear-gradient(rgba(151, 181, 151, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(151, 181, 151, 0.015) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.support-panel-border {
+  border-left: 4px solid var(--color-hud-yellow);
+}
+
+input:focus, textarea:focus {
+  background: rgba(151, 181, 151, 0.03);
+  outline: none;
+  border-color: var(--color-hud-yellow);
+}
